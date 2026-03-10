@@ -1,0 +1,813 @@
+---
+title: "Final Project (MSC)"
+format: html
+editor: visual
+---
+
+## Final Project: University Dropout
+
+```{r}
+
+library(tidyverse)
+library(janitor)
+library(skimr)
+library(GGally)
+library(broom)
+library(corrplot)
+
+
+df <- read.csv("dropout_data.csv", sep = ";")
+
+df <- clean_names(df)
+
+cat_vars <- c(
+  "marital_status",
+  "application_mode",
+  "course",
+  "daytime_evening_attendance",
+  "previous_qualification",
+  "nacionality",
+  "mother_s_qualification",
+  "father_s_qualification",
+  "mother_s_occupation",
+  "father_s_occupation",
+  "displaced",
+  "educational_special_needs",
+  "debtor",
+  "tuition_fees_up_to_date",
+  "gender",
+  "scholarship_holder",
+  "international"
+)
+
+num_vars <- c(
+  "application_order",
+  "previous_qualification_grade",
+  "admission_grade",
+  "age_at_enrollment",
+  "curricular_units_1st_sem_credited",
+  "curricular_units_1st_sem_enrolled",
+  "curricular_units_1st_sem_evaluations",
+  "curricular_units_1st_sem_approved",
+  "curricular_units_1st_sem_grade",
+  "curricular_units_1st_sem_without_evaluations",
+  "curricular_units_2nd_sem_credited",
+  "curricular_units_2nd_sem_enrolled",
+  "curricular_units_2nd_sem_evaluations",
+  "curricular_units_2nd_sem_approved",
+  "curricular_units_2nd_sem_grade",
+  "curricular_units_2nd_sem_without_evaluations",
+  "unemployment_rate",
+  "inflation_rate",
+  "gdp"
+)
+
+outcome_colors <- c(
+  "Dropout" = "#D55E00",
+  "Enrolled" = "#0072B2",
+  "Graduate" = "#009E73"
+)
+
+theme_report <- theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    legend.title = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+
+theme_set(theme_report)
+```
+
+Preprocesement of the data, check for missing values.
+
+```{r}
+
+df <- df %>%
+  mutate(
+    across(all_of(cat_vars), as.factor),
+    target = factor(target, levels = c("Dropout", "Enrolled", "Graduate")),
+    dropout_bin = if_else(target == "Dropout", 0, 1),
+    dropout_bin_f = factor(dropout_bin, levels = c(0, 1), labels = c("Dropout", "No dropout"))
+  )
+
+dim(df)
+names(df)
+glimpse(df)
+skim(df)
+
+colSums(is.na(df))
+sum(is.na(df))
+```
+
+Analysis of the distribution of the dataset:
+
+```{r}
+
+table(df$dropout_bin_f)
+prop.table(table(df$dropout_bin_f))
+
+table(df$target)
+prop.table(table(df$target))
+
+ggplot(df, aes(x = target, fill = target)) +
+  geom_bar() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Distribution of academic outcomes",
+    x = "Outcome",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = dropout_bin_f, fill = dropout_bin_f)) +
+  geom_bar() +
+  scale_fill_manual(values = c("Dropout" = "#D55E00", "No dropout" = "#0072B2")) +
+  labs(
+    title = "Distribution of binary dropout outcome",
+    x = "Binary outcome",
+    y = "Count"
+  )
+```
+
+```{r}
+
+ggplot(df, aes(x = factor(marital_status))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of marital status",
+    x = "Marital status",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = factor(marital_status), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by marital status",
+    x = "Marital status",
+    y = "Proportion"
+  )
+
+ggplot(df, aes(x = factor(application_mode))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of application mode",
+    x = "Application mode",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = factor(application_mode), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by application mode",
+    x = "Application mode",
+    y = "Proportion"
+  )
+
+ggplot(df, aes(x = application_order)) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of application order",
+    x = "Application order",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = factor(application_order), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by application order",
+    x = "Application order",
+    y = "Proportion"
+  )
+
+ggplot(df, aes(x = factor(course))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of courses",
+    x = "Course",
+    y = "Count"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = factor(course), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by course",
+    x = "Course",
+    y = "Proportion"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = factor(daytime_evening_attendance))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of daytime vs evening attendance",
+    x = "Attendance type",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = factor(daytime_evening_attendance), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by attendance type",
+    x = "Attendance type",
+    y = "Proportion"
+  )
+
+ggplot(df, aes(x = factor(previous_qualification))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of previous qualification",
+    x = "Previous qualification",
+    y = "Count"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = factor(previous_qualification), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by previous qualification",
+    x = "Previous qualification",
+    y = "Proportion"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = previous_qualification_grade)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Distribution of previous qualification grade",
+    x = "Grade",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = previous_qualification_grade, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Previous qualification grade by academic outcome",
+    x = "Outcome",
+    y = "Grade"
+  )
+
+ggplot(df, aes(x = factor(nacionality))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of nationality",
+    x = "Nationality",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = factor(nacionality), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by nationality",
+    x = "Nationality",
+    y = "Proportion"
+  )
+
+ggplot(df, aes(x = factor(mother_s_qualification))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of mother's qualification",
+    x = "Mother's qualification",
+    y = "Count"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = factor(mother_s_qualification), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by mother's qualification",
+    x = "Mother's qualification",
+    y = "Proportion"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = factor(father_s_qualification))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of father's qualification",
+    x = "Father's qualification",
+    y = "Count"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = factor(father_s_qualification), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by father's qualification",
+    x = "Father's qualification",
+    y = "Proportion"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = factor(mother_s_occupation))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of mother's occupation",
+    x = "Mother's occupation",
+    y = "Count"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = factor(mother_s_occupation), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by mother's occupation",
+    x = "Mother's occupation",
+    y = "Proportion"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = factor(father_s_occupation))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of father's occupation",
+    x = "Father's occupation",
+    y = "Count"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = factor(father_s_occupation), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by father's occupation",
+    x = "Father's occupation",
+    y = "Proportion"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggplot(df, aes(x = admission_grade)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Distribution of admission grade",
+    x = "Admission grade",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = admission_grade, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Admission grade by academic outcome",
+    x = "Outcome",
+    y = "Admission grade"
+  )
+
+ggplot(df, aes(x = factor(displaced), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by displaced status",
+    x = "Displaced",
+    y = "Proportion"
+  )
+
+ggplot(df, aes(x = factor(educational_special_needs))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of educational special needs",
+    x = "Special needs",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = factor(educational_special_needs), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by educational special needs",
+    x = "Special needs",
+    y = "Proportion"
+  )
+
+ggplot(df, aes(x = factor(debtor))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of students with debt",
+    x = "Debtor",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = factor(debtor), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by debtor status",
+    x = "Debtor",
+    y = "Proportion"
+  )
+
+ggplot(df, aes(x = factor(tuition_fees_up_to_date))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of tuition payment status",
+    x = "Tuition fees up to date",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = factor(tuition_fees_up_to_date), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by tuition payment status",
+    x = "Tuition status",
+    y = "Proportion"
+  )
+
+ggplot(df, aes(x = factor(gender))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of gender",
+    x = "Gender",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = factor(gender), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by gender",
+    x = "Gender",
+    y = "Proportion"
+  )
+
+ggplot(df, aes(x = factor(scholarship_holder))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of scholarship holders",
+    x = "Scholarship holder",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = age_at_enrollment)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Distribution of age at enrollment",
+    x = "Age",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = age_at_enrollment, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Age at enrollment by academic outcome",
+    x = "Outcome",
+    y = "Age"
+  )
+
+ggplot(df, aes(x = factor(international))) +
+  geom_bar(fill = "#0072B2") +
+  labs(
+    title = "Distribution of international students",
+    x = "International",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = factor(international), fill = target)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Academic outcome by international status",
+    x = "International",
+    y = "Proportion"
+  )
+
+ggplot(df, aes(x = curricular_units_1st_sem_credited)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Credited units in first semester",
+    x = "Credited units",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = curricular_units_1st_sem_credited, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Credited units by academic outcome",
+    x = "Outcome",
+    y = "Credited units"
+  )
+
+ggplot(df, aes(x = curricular_units_1st_sem_enrolled)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Enrolled curricular units (1st semester)",
+    x = "Enrolled units",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = curricular_units_1st_sem_enrolled, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Enrolled units by academic outcome",
+    x = "Outcome",
+    y = "Enrolled units"
+  )
+
+ggplot(df, aes(x = curricular_units_1st_sem_evaluations)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Evaluations in first semester",
+    x = "Evaluations",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = curricular_units_1st_sem_evaluations, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Evaluations by academic outcome",
+    x = "Outcome",
+    y = "Evaluations"
+  )
+
+ggplot(df, aes(x = curricular_units_1st_sem_approved)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Approved curricular units in first semester",
+    x = "Approved units",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = curricular_units_1st_sem_approved)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Approved curricular units in first semester",
+    x = "Approved units",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = curricular_units_1st_sem_grade)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Distribution of first semester grades",
+    x = "Average grade",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = curricular_units_1st_sem_grade)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Distribution of first semester grades",
+    x = "Average grade",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = curricular_units_1st_sem_without_evaluations)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "First semester units without evaluation",
+    x = "Units without evaluation",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = curricular_units_1st_sem_without_evaluations, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Units without evaluation by academic outcome",
+    x = "Outcome",
+    y = "Units without evaluation"
+  )
+
+ggplot(df, aes(x = curricular_units_2nd_sem_credited)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Credited curricular units in second semester",
+    x = "Credited units",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = curricular_units_2nd_sem_credited, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Credited units in second semester by academic outcome",
+    x = "Outcome",
+    y = "Credited units"
+  )
+
+ggplot(df, aes(x = curricular_units_2nd_sem_enrolled)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Enrolled curricular units in second semester",
+    x = "Enrolled units",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = curricular_units_2nd_sem_enrolled, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Enrolled units in second semester by academic outcome",
+    x = "Outcome",
+    y = "Enrolled units"
+  )
+
+ggplot(df, aes(x = curricular_units_2nd_sem_evaluations)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Second semester evaluations",
+    x = "Evaluations",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = curricular_units_2nd_sem_evaluations)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Second semester evaluations",
+    x = "Evaluations",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = curricular_units_2nd_sem_approved)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Approved curricular units in second semester",
+    x = "Approved units",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = curricular_units_2nd_sem_approved)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Approved curricular units in second semester",
+    x = "Approved units",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = curricular_units_2nd_sem_grade)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Distribution of second semester grades",
+    x = "Average grade",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = curricular_units_2nd_sem_grade, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Second semester grades by academic outcome",
+    x = "Outcome",
+    y = "Average grade"
+  )
+
+ggplot(df, aes(x = curricular_units_2nd_sem_without_evaluations)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Second semester units without evaluation",
+    x = "Units without evaluation",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = curricular_units_2nd_sem_without_evaluations, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Units without evaluation by academic outcome",
+    x = "Outcome",
+    y = "Units without evaluation"
+  )
+
+ggplot(df, aes(x = unemployment_rate)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Distribution of unemployment rate",
+    x = "Unemployment rate",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = unemployment_rate, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Unemployment rate by academic outcome",
+    x = "Outcome",
+    y = "Unemployment rate"
+  )
+
+ggplot(df, aes(x = inflation_rate)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Distribution of inflation rate",
+    x = "Inflation rate",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = inflation_rate, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "Inflation rate by academic outcome",
+    x = "Outcome",
+    y = "Inflation rate"
+  )
+
+ggplot(df, aes(x = gdp)) +
+  geom_histogram(bins = 30, fill = "#0072B2", color = "white") +
+  labs(
+    title = "Distribution of GDP",
+    x = "GDP",
+    y = "Count"
+  )
+
+ggplot(df, aes(x = target, y = gdp, fill = target)) +
+  geom_boxplot() +
+  scale_fill_manual(values = outcome_colors) +
+  labs(
+    title = "GDP by academic outcome",
+    x = "Outcome",
+    y = "GDP"
+  )
+```
+
+```{r}
+
+num_summary <- df %>%
+  summarise(
+    across(
+      all_of(num_vars),
+      list(
+        mean = ~mean(.x, na.rm = TRUE),
+        sd = ~sd(.x, na.rm = TRUE),
+        min = ~min(.x, na.rm = TRUE),
+        p25 = ~quantile(.x, 0.25, na.rm = TRUE),
+        median = ~median(.x, na.rm = TRUE),
+        p75 = ~quantile(.x, 0.75, na.rm = TRUE),
+        max = ~max(.x, na.rm = TRUE)
+      )
+    )
+  ) %>%
+  pivot_longer(
+    everything(),
+    names_to = c("variable", ".value"),
+    names_sep = "_(?=[^_]+$)"
+  )
+
+num_summary
+
+cat_summary <- df %>%
+  select(all_of(cat_vars)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
+  count(variable, value) %>%
+  group_by(variable) %>%
+  mutate(prop = n / sum(n)) %>%
+  arrange(variable, desc(n))
+
+cat_summary
+```
+
+LINEAR RELATION STUDIES:
+
+```{r}
+
+# Vriables numericas:
+
+cor_matrix <- df %>%
+  select(all_of(num_vars)) %>%
+  cor(use = "pairwise.complete.obs")
+
+short_names <- c(
+  "App order", "Prev qual grade", "Admission grade", "Age",
+  "1st cred", "1st enrolled", "1st eval", "1st approved", "1st grade", "1st no eval",
+  "2nd cred", "2nd enrolled", "2nd eval", "2nd approved", "2nd grade", "2nd no eval",
+  "Unemployment", "Inflation", "GDP"
+)
+
+colnames(cor_matrix) <- short_names
+rownames(cor_matrix) <- short_names
+
+corrplot(
+  cor_matrix,
+  method = "color",
+  type = "upper",
+  order = "hclust",
+  tl.cex = 0.8,
+  tl.col = "black",
+  number.cex = 0.5
+)
+
+# Variables categoricas:
+
+GGally::ggbivariate(
+  df %>% select(target, all_of(cat_vars)),
+  outcome = "target",
+  cardinality_threshold = 50
+)
+```
