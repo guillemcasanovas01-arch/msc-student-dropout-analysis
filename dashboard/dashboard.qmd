@@ -82,59 +82,89 @@ ggplot(df, aes(x = dropout_bin_f, fill = dropout_bin_f)) +
 
 prop.table(table(df$dropout_bin_f))
 ```
+
+# Model Results
+
+## Random Forest Variable Importance
+
+```{r}
+rf_importance <- importance(rf_model)
+
+rf_imp_df <- data.frame(
+  variable = rownames(rf_importance),
+  importance = rf_importance[,1]
+)
+
+rf_imp_df <- rf_imp_df %>%
+  arrange(desc(importance)) %>%
+  slice(1:10)
+
+ggplot(rf_imp_df, aes(x = reorder(variable, importance), y = importance)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Important Variables (Random Forest)",
+    x = "Variable",
+    y = "Importance"
+  ) +
+  theme_minimal()
+```
+ 
+
 # Model Performance
 
 ## Random Forest
 
-::: {.row}
-
-::: {.column}
+:::::: row
+::: column
 ### Accuracy
+
 ```{r}
 rf_confusion$overall["Accuracy"]
 ```
 :::
 
-::: {.column}
+::: column
 ### Sensitivity
+
 ```{r}
 rf_confusion$byClass["Sensitivity"]
 ```
 :::
 
-::: {.column}
+::: column
 ### Specificity
+
 ```{r}
 rf_confusion$byClass["Specificity"]
 ```
 :::
-
-:::
-
+::::::
 
 ## Logistic Regression
 
-::: {.row}
-
-::: {.column}
+:::::: row
+::: column
 ### Accuracy
+
 ```{r}
 logit_confusion$overall["Accuracy"]
 ```
 :::
 
-::: {.column}
+::: column
 ### Sensitivity
+
 ```{r}
 logit_confusion$byClass["Sensitivity"]
 ```
 :::
 
-::: {.column}
+::: column
 ### Specificity
+
 ```{r}
 logit_confusion$byClass["Specificity"]
 ```
 :::
-
-:::
+::::::
